@@ -15,7 +15,7 @@ OPTIONS = {
         'CFBundleExecutable': 'Mac Control',
         'CFBundleIconFile': 'AppIcon.icns',
     },
-    'packages': ['pyautogui', 'pygame'],  # packages
+    'packages': ['pyautogui', 'pygame', 'requests'],  # packages
     'excludes': ['rubicon'],
 }
 

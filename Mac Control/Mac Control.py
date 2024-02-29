@@ -1,14 +1,24 @@
 import pygame
-import pyautogui
+
+from updater.app_updater import check_for_update
+from messages import notifications
+from modes import modes_list
+from modes import free_move
+
+CURRENT_MODE = None
+
+update_check_triggered = False
+update_check_completed = False
+
+mode_changed_free_move_triggered = False
+
+joystick_not_connected_message_triggered = False
+joystick_connected_message_triggered = False
 
 pygame.init()
 pygame.joystick.init()
-
-SMOOTHING_FACTOR = 3
-
-DEAD_ZONE_THRESHOLD = 0.2
-
-cursor_x, cursor_y = pyautogui.position()
+pygame.event.get()
+pygame.event.set_blocked(pygame.ACTIVEEVENT)
 
 while True:
     pygame.event.get()
@@ -17,35 +27,43 @@ while True:
         joystick = pygame.joystick.Joystick(0)
         joystick.init()
 
+        if not joystick_connected_message_triggered:
+            notifications.notificationBalloon("Mac Control", joystick.get_name() + " has connected")
+            joystick_connected_message_triggered = True
+            joystick_not_connected_message_triggered = False
+
         if joystick.get_numaxes() >= 2 and joystick.get_numbuttons() >= 1:
-            BUTTON_A = 0
-            BUTTON_B = 1
-            JOYSTICK_X = 0
-            JOYSTICK_Y = 1
+            TRIGGER_L = 4
+            TRIGGER_R = 5
 
-            if joystick.get_button(BUTTON_A):
-                pyautogui.click()
+            BUTTON_MINUS = 4
+            BUTTON_PLUS = 6
 
-            if joystick.get_button(BUTTON_B):
-                pyautogui.rightClick()
+            if joystick.get_button(BUTTON_PLUS):
+                if not mode_changed_free_move_triggered:
+                    CURRENT_MODE = modes_list.Move_Mode.FREE_MOVE
+                    notifications.notificationBalloon("Mac Control", "Mode changed to Free Move")
+                    mode_changed_free_move_triggered = True
 
-            joystick_x_value = joystick.get_axis(JOYSTICK_X)
-            joystick_y_value = joystick.get_axis(JOYSTICK_Y)
+            if CURRENT_MODE == modes_list.Move_Mode.FREE_MOVE:
+                free_move.free_move()
+            elif CURRENT_MODE == modes_list.Move_Mode.SNAP_MOVE:
+                notifications.notificationBalloon("Mac Control", "This feature is not implemented yet")
 
-            if abs(joystick_x_value) > DEAD_ZONE_THRESHOLD or abs(joystick_y_value) > DEAD_ZONE_THRESHOLD:
-                target_x = cursor_x + joystick_x_value * 25
-                target_y = cursor_y + joystick_y_value * 25
-                cursor_x += (target_x - cursor_x) * SMOOTHING_FACTOR
-                cursor_y += (target_y - cursor_y) * SMOOTHING_FACTOR
-
-                cursor_x = max(0, min(cursor_x, pyautogui.size()[0]))
-                cursor_y = max(0, min(cursor_y, pyautogui.size()[1]))
-
-                pyautogui.moveTo(cursor_x, cursor_y, duration=0)
+            if joystick.get_axis(TRIGGER_L) >= 0.5 and joystick.get_axis(TRIGGER_R) >= 0.5:
+                if not update_check_triggered:
+                    check_for_update()
+                    update_check_triggered = True
+            else:
+                update_check_triggered = False
 
         else:
-            print("Joystick does not have required number of axes or buttons.")
+            print("Joystick does not have the required number of axes or buttons.")
     else:
-        print("No joysticks detected.")
+        if not joystick_not_connected_message_triggered:
+            print("No joysticks detected.")
+            notifications.notificationBalloon("Mac Control", "No controller detected")
+            joystick_not_connected_message_triggered = True
+            joystick_connected_message_triggered = False
 
-    pygame.time.delay(1)
+
